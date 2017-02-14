@@ -1,0 +1,25 @@
+{
+  "name": "node-cntk-fastrcnn",
+  "version": "0.1.0",
+  "description": "node.js API for CNTK Fast-RCNN model",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nadavbar/node-cntk-fastrcnn.git"
+  },
+  "keywords": [
+    "CNTK",
+    "RCNN",
+    "Deep",
+    "Learning"
+  ],
+  "author": "nadavbar",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/nadavbar/node-cntk-fastrcnn/issues"
+  },
+  "homepage": "https://github.com/nadavbar/node-cntk-fastrcnn#readme"
+}

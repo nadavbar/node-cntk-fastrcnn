@@ -1,0 +1,1 @@
+module.exports.CNTKFRCNNModel = require('./src/frcnn_model.js').CNTKFRCNNModel;
