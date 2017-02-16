@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-MOCK_CLASSES = {1 : 'player'};
+MOCK_CLASSES = {'player': 1};
 MOCK_REGION = {
     'region' : {'x1' : 1, 'y1' : 1, 'x2' : 50, 'y2' : 50, 'class' : 1},
 }
