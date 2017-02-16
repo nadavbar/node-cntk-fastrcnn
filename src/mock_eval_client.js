@@ -1,10 +1,9 @@
 const fs = require('fs');
 const path = require('path');
 
-MOCK_CLASSES = ['person', 'player'];
+MOCK_CLASSES = {1 : 'player'};
 MOCK_REGION = {
-    'region' : {'x1' : 1, y1 : 1, x2 : 50, y2 : 50},
-    'class' : 'person'
+    'region' : {'x1' : 1, 'y1' : 1, 'x2' : 50, 'y2' : 50, 'class' : 1},
 }
 
 function evalDirectory(directoryPath, cb) {
@@ -20,7 +19,7 @@ function evalDirectory(directoryPath, cb) {
         }
         files.forEach(file => {
             if (path.extname(file) == ".jpg") {
-                resultsObj['frames'][file] = [MOCK_REGION]
+                resultsObj['frames'][file] = {'regions' : [MOCK_REGION]}
             }
         });
 
