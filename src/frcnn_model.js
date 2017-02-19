@@ -1,5 +1,5 @@
 DEFAULT_CNTK_INSTALL_PATH = 'c:\\local'
-const EvalClient = require('./mock_eval_client').EvalClient;
+const EvalClient = require('./python_eval_client').EvalClient;
 
 function CNTKFRCNNModel(cntkModelPath, cntkPath) {
     if (!cntkModelPath) {
@@ -9,7 +9,7 @@ function CNTKFRCNNModel(cntkModelPath, cntkPath) {
     this.cntkModelPath = cntkModelPath;
     this.cntkPath = cntkPath || DEFAULT_CNTK_INSTALL_PATH;
 
-    evalClient = new EvalClient(cntkModelPath, cntkPath);
+    evalClient = new EvalClient(cntkModelPath, this.cntkPath);
 
     this.evaluateDirectory = function evaluateDirectory(directoryPath, cb) {
         if (!directoryPath) {
@@ -19,7 +19,7 @@ function CNTKFRCNNModel(cntkModelPath, cntkPath) {
         if (!cb || (typeof cb != 'function')) {
             throw new Error('No completion callback was given, or non-function was given as second argument');
         }
-
+        
         evalClient.evalDirectory(directoryPath, cb);
     }
 }

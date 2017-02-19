@@ -7,7 +7,7 @@ MOCK_REGION = {
 }
 
 
-function EvalClient(cntkInstallDir, cntkModelPath) {
+function EvalClient(cntkModelPath, cntkInstallDir) {
 
     this.evalDirectory = function(directoryPath, cb) {
         resultsObj = {
