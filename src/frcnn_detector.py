@@ -93,9 +93,9 @@ class FRCNNDetector:
 
         # prepare the arguments
         arguments = {
-            self.__model.arguments[1]: [dummy_image],
-            self.__model.arguments[0]: [dummy_rois],
-            self.__model.arguments[2]: [dummy_labels]
+            self.__model.arguments[self.__args_indices["features"]]: [dummy_image],
+            self.__model.arguments[self.__args_indices["rois"]]: [dummy_rois],
+            self.__model.arguments[self.__args_indices["roiLabels"]]: [dummy_labels]
         }
         self.__model.eval(arguments)
 
@@ -106,10 +106,28 @@ class FRCNNDetector:
         if self.__model:
             raise Exception("Model already loaded")
         self.__model = load_model(self.__model_path)
-        self.__nr_rois = self.__model.arguments[0].shape[0]
-        self.__resize_width = self.__model.arguments[1].shape[1]
-        self.__resize_height = self.__model.arguments[1].shape[2]
-        self.labels_count = self.__model.arguments[2].shape[1]
+        self.__args_indices = {}
+        self.__output_indices = {}
+        # get arugments indices:
+        # arguments names:
+        #rois
+        #features
+        #roiLabels
+
+        #outputs names:
+        #ce_output
+        #errs_output
+        #z_output
+
+        for arg, i in zip(self.__model.arguments, range(len(self.__model.arguments))):
+            self.__args_indices[arg.name] = i
+        for out, i in zip(self.__model.outputs, range(len(self.__model.outputs))):
+            self.__output_indices[out.name] = i 
+
+        self.__nr_rois = self.__model.arguments[self.__args_indices["rois"]].shape[0]
+        self.__resize_width = self.__model.arguments[self.__args_indices["features"]].shape[1]
+        self.__resize_height = self.__model.arguments[self.__args_indices["features"]].shape[2]
+        self.labels_count = self.__model.arguments[self.__args_indices["roiLabels"]].shape[1]
 
     def resize_and_pad(self, img):
         self.ensure_model_is_loaded()
@@ -235,9 +253,9 @@ class FRCNNDetector:
 
         # prepare the arguments
         arguments = {
-            self.__model.arguments[1]: [img_model_arg],
-            self.__model.arguments[0]: [test_rois],
-            self.__model.arguments[2]: [dummy_labels]
+            self.__model.arguments[self.__args_indices["features"]]: [img_model_arg],
+            self.__model.arguments[self.__args_indices["rois"]]: [test_rois],
+            self.__model.arguments[self.__args_indices["roiLabels"]]: [dummy_labels]
         }
 
         # run it through the model
@@ -245,7 +263,7 @@ class FRCNNDetector:
         watch.t("Evaluated through network")
         self.__model_warm  = True
         # take just the relevant part and cast to float64 to prevent overflow when doing softmax
-        rois_values = output[self.__model.outputs[2]][0][0][:roi_padding_index].astype(np.float64)
+        rois_values = output[self.__model.outputs[self.__output_indices["z_output"]]][0][0][:roi_padding_index].astype(np.float64)
 
         # get the prediction for each roi by taking the index with the maximal value in each row
         rois_labels_predictions = np.argmax(rois_values, axis=1)

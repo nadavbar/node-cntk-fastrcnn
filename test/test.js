@@ -1,7 +1,7 @@
 const path = require('path');
 const m = require('../');
 
-//imagesDir = path.join(__dirname, 'test_imgs');
+//onst imagesDir = path.join(__dirname, 'test_imgs');
 const modelFileLocation = 'C:\\cntk_model\\Fast-RCNN.model';
 const imagesDir = 'C:\\cntk_input\\testImages';
 

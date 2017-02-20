@@ -8,12 +8,12 @@ const exec = require('child_process').exec;
 const CNTK_CMD_TEMPLATE = "%s " + path.join(__dirname, 'frcnn_detector.py') + 
                           ' --input %s --json-output %s --model %s'
 
-function resolveCntkEnv(cntkInstallDir) {
+function resolveCntkEnvDir(cntkInstallDir) {
     entries = fs.readdirSync(cntkInstallDir)
     anacondaEntries = entries.filter((value) => {return value.toLowerCase().startsWith('anaconda3-')});
     anacondaEntries.sort();
     anacondaPath = anacondaEntries[anacondaEntries.length - 1];
-    return path.join(cntkInstallDir, anacondaPath, 'envs/cntk-py34/python');
+    return path.join(cntkInstallDir, anacondaPath, 'envs/cntk-py34');
 }
 
 function getAndEnsureJsonTempDir() {
@@ -25,8 +25,8 @@ function getAndEnsureJsonTempDir() {
     return tmpDirPath;
 }
 
-function buildCntkCmd(directoryPath, cntkModelPath, cntkEnvPath, jsonFilePath) {
-    return util.format(CNTK_CMD_TEMPLATE, cntkEnvPath, directoryPath, jsonFilePath, cntkModelPath)
+function buildCntkCmd(directoryPath, cntkModelPath, cntkEnvDirPath, jsonFilePath) {
+    return util.format(CNTK_CMD_TEMPLATE, path.join(cntkEnvDirPath, 'python'), directoryPath, jsonFilePath, cntkModelPath)
 }
 
 function runCNTK(cntk_cmd, cb) {
@@ -36,13 +36,13 @@ function runCNTK(cntk_cmd, cb) {
     });
 }
 
-function evalDirectoryImp(directoryPath, cntkModelPath, cntkEnvPath, jsonTempDir, cb) {
+function evalDirectoryImp(directoryPath, cntkModelPath, cntkEnvDirPath, jsonTempDir, cb) {
     tmp.tmpName({dir : jsonTempDir, postfix: '.json'}, (err, jsonFilePath)=> {
         if (err) {
             return cb(err);
         }
         
-        var cmd = buildCntkCmd(directoryPath, cntkModelPath, cntkEnvPath, jsonFilePath);
+        var cmd = buildCntkCmd(directoryPath, cntkModelPath, cntkEnvDirPath, jsonFilePath);
         runCNTK(cmd, (err) =>{
             if (err) {
                 return cb(err);
@@ -69,12 +69,14 @@ function evalDirectoryImp(directoryPath, cntkModelPath, cntkEnvPath, jsonTempDir
 function EvalClient(cntkModelPath, cntkInstallDir) {
     this.cntkInstallDir = cntkInstallDir;
     this.cntkModelPath = cntkModelPath;
-    this.cntkEnvPath = resolveCntkEnv(cntkInstallDir);
+    this.cntkEnvDirPath = resolveCntkEnvDir(cntkInstallDir);
+    // add to path..
+    process.env.PATH = this.cntkEnvDirPath + ';' + process.env.PATH;
     this.jsonTempDir = getAndEnsureJsonTempDir();
 
     this.evalDirectory = function(directoryPath, cb) {
         try {
-            evalDirectoryImp(directoryPath, this.cntkModelPath, this.cntkEnvPath, this.jsonTempDir, cb);
+            evalDirectoryImp(directoryPath, this.cntkModelPath, this.cntkEnvDirPath, this.jsonTempDir, cb);
         }
         catch(e) {
             return cb(e);
