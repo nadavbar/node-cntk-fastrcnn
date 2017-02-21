@@ -21,6 +21,7 @@ function CNTKFRCNNModel(opts) {
 
     this.cntkModelPath = opts.cntkModelPath;
     this.cntkPath = opts.cntkPath || DEFAULT_CNTK_INSTALL_PATH;
+    this.verbose = opts.verbose;
 
     evalClient = new EvalClient(this.cntkModelPath, this.cntkPath, this.verbose);
 

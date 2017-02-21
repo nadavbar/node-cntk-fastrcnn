@@ -62,6 +62,7 @@ function evalDirectoryImp(directoryPath, cntkModelPath, cntkEnvDirPath, jsonTemp
         
         var cmd = buildCntkCmd(directoryPath, cntkModelPath, cntkEnvDirPath, jsonFilePath, cntkInstallDir);
         runCNTK(cmd, (err, output_data) =>{
+            console.info('verbose')
             if (verbose) {
                 console.info('CNTK process output:')
                 console.info(output_data);
