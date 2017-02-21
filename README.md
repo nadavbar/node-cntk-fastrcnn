@@ -1,15 +1,25 @@
-# node-cntk-fastrcnn
+# cntk-fastrcnn for node.js
 A node wrapper a CNTK Fast-RCNN model
 
 Note: The model works with CNTK v2 Models. 
 For more info about the CNTK Fast-RCNN implementation, take a look at [this tutorial](https://github.com/Microsoft/CNTK/wiki/Object-Detection-using-Fast-R-CNN) and [this notebook](https://github.com/nadavbar/cntk-fastrcnn/blob/master/frcnn_eval.ipynb).
 
+### Installation
+Install by running:
+
+```
+npm install cntk-fastrcnn
+```
+
 ###How to use
 
 First, load the module and create an instance of a CNTKFRCNNModel object.
-The constructor accepts two parameters:
- - A path of the CNTK model file
- - (Optional) The installation location of CNTK. If not provided, the parameter defaults to "c:\local" 
+
+The constructor accepts an options object with the following fields:
+ - cntkModelPath : Path to the CNTK Fast-RCNN model file
+ - cntkPath : The directory in which CNTK is installed. Default value: 'C:\local'
+ - verbose : if set - the module will write verbose output when running evaluation. Default: false
+ 
 
 For example:
 
@@ -18,7 +28,7 @@ const CNTKFRCNNModel = require('cntk-fastrcnn').CNTKFRCNNModel;
 
 const modelFileLocation = 'C:\\cntk_model\\Fast-RCNN.model';
 
-model = new CNTKFRCNNModel(modelFileLocation /*, optional: CNTK install location, default is C:\local */);
+model = new CNTKFRCNNModel({cntkModelPath : modelFileLocation});
 ```
 
 Next, call the model for detection using the **evaluateDirectory** method.
@@ -70,9 +80,29 @@ Here is an example of the result object of a directory that contains 2 images (n
 		}
 	},
 	"classes": {
+		"background" : 0,
 		"human": 1,
 		"cat": 2,
 		"dog" : 3
 	}
+}
+```
+
+### Adding descriptive classes names
+Since CNTK does not embed the names of the classes in the model, on default, the module returns non descriptive names for the classes, e.g. "class_1", "class_2".
+
+If you want the module to return more descriptive names, you can place a JSON file named "model.json" in the same directory of the Fast-RCNN model file.
+You can then place the desriptions of the classes in the JSON file under the "classes" key.
+
+For example, the following JSON will describe the classes for the above example:
+
+```json
+{
+    "classes" : {
+        "background" : 0,
+        "human" : 1,
+		"cat" : 2,
+		"dog" : 3
+    }
 }
 ```

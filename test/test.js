@@ -5,7 +5,7 @@ const m = require('../');
 const modelFileLocation = 'C:\\cntk_model\\Fast-RCNN.model';
 const imagesDir = 'C:\\cntk_input\\testImages';
 
-model = new m.CNTKFRCNNModel(modelFileLocation);
+model = new m.CNTKFRCNNModel({cntkModelPath : modelFileLocation, verbose : true});
 model.evaluateDirectory(imagesDir, (err, res) => {
     if (err) {
         console.info(err)

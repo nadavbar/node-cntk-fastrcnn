@@ -29,9 +29,22 @@ roi_minNrPixels = roi_minNrPixelsRel * roi_maxImgDim * roi_maxImgDim
 roi_maxNrPixels = roi_maxNrPixelsRel * roi_maxImgDim * roi_maxImgDim
 nms_threshold = 0.1
 
-# TODO: Read this from a model configuration file
-# Maybe have the parameter file shipped with this file
-MODEL_CLASSES = {"player" : 1}
+
+def get_classes_description(model_file_path, classes_count):
+    model_dir = path.dirname(model_file_path)
+    classes_names = {}
+    model_desc_file_path = path.join(model_dir, 'model.json')
+    if not path.exists(model_desc_file_path):
+        # use default parameter names:
+        for i in range(classes_count):
+            classes_names["class_%d"%i] = i
+        return classes_names
+    
+    with open(model_desc_file_path) as handle:
+        file_content = handle.read()
+        model_desc = json.loads(file_content)
+    return model_desc["classes"]
+   
 
 class StopWatch:
     def __init__(self, silent=False):
@@ -230,7 +243,7 @@ class FRCNNDetector:
 
     def detect(self, img):
 
-        watch = StopWatch()
+        watch = StopWatch(silent=True)
         self.ensure_model_is_loaded()
         watch.t("Loaded model")
 
@@ -262,8 +275,15 @@ class FRCNNDetector:
         output = self.__model.eval(arguments)
         watch.t("Evaluated through network")
         self.__model_warm  = True
+        
+        
+        # some CNTK version call the output layer "z_output" and some "z", not sure why its not embdded in the model
+        output_param_name = "z_output"
+        if (not output_param_name in self.__output_indices):
+            output_param_name = "z"
+        
         # take just the relevant part and cast to float64 to prevent overflow when doing softmax
-        rois_values = output[self.__model.outputs[self.__output_indices["z_output"]]][0][0][:roi_padding_index].astype(np.float64)
+        rois_values = output[self.__model.outputs[self.__output_indices[output_param_name]]][0][0][:roi_padding_index].astype(np.float64)
 
         # get the prediction for each roi by taking the index with the maximal value in each row
         rois_labels_predictions = np.argmax(rois_values, axis=1)
@@ -303,6 +323,10 @@ if __name__ == "__main__":
                         help='Path to model file',
                         required=True)
 
+    parser.add_argument('--cntk-path', type=str, metavar='<dir path>',
+                        help='Path to the diretory in which CNTK is installed, e.g. c:\\local',
+                        required=False)
+
     parser.add_argument('--json-output', type=str, metavar='<file path>',
                         help='Path to output JSON file', required=False)
 
@@ -313,27 +337,42 @@ if __name__ == "__main__":
     json_output_path = args.json_output
     model_file_path = args.model
 
+    if args.cntk_path:
+        cntk_path = args.cntk_path
+    else:
+        cntk_path = "C:\\local"
+    cntk_scripts_path = path.join(cntk_path, r"cntk/Examples/Image/Detection/FastRCNN")
+
     if (output_path is None and json_output_path is None):
         parser.error("No directory output path or json output path specified")
 
     if (output_path is not None) and not os.path.exists(output_path):
         os.makedirs(output_path)
-    if (json_output_path is not None):
-        json_output_obj = {"classes": MODEL_CLASSES,
-                           "frames" : {}}
-
+    
     if os.path.isdir(input_path):
         import glob
         file_paths = glob.glob(os.path.join(input_path, '*.jpg'))
     else:
         file_paths = [input_path]
 
-    detector = FRCNNDetector(model_file_path, use_selective_search_rois=False)
+    detector = FRCNNDetector(model_file_path, use_selective_search_rois=False, 
+                            cntk_scripts_path=cntk_scripts_path)
+    detector.load_model()
+
+    if (json_output_path is not None):
+        model_classes = get_classes_description(model_file_path, detector.labels_count)
+        json_output_obj = {"classes": model_classes,
+                           "frames" : {}}
+
     colors = [(0,0,0), (255,0,0), (0,0,255)]
     players_label = -1
-    for file_path in file_paths:
+    print("Number of images to process: %d"%len(file_paths))
+
+    for file_path, counter in zip(file_paths, range(len(file_paths))):
         img = cv2.imread(file_path)
         rects = detector.detect(img)
+
+        print("Processed image %d"%(counter+1))
 
         if (output_path is not None):
             img_cpy = img.copy()

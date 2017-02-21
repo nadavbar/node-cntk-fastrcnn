@@ -1,15 +1,28 @@
-DEFAULT_CNTK_INSTALL_PATH = 'c:\\local'
+const fs = require('fs');
 const EvalClient = require('./python_eval_client').EvalClient;
+const DEFAULT_CNTK_INSTALL_PATH = 'c:\\local';
 
-function CNTKFRCNNModel(cntkModelPath, cntkPath) {
-    if (!cntkModelPath) {
+/*
+opts:
+{
+    cntkModelPath : Path to the CNTK Fast-RCNN model file
+    cntkPath : The directory in which CNTK is installed. Default value: 'C:\local'
+    verbose : if set - the module will write verbose output when running evaluation. Default: false
+}
+*/
+function CNTKFRCNNModel(opts) {
+    if (!opts.cntkModelPath) {
         throw new Error('No CNTK model path was specified');
     }
 
-    this.cntkModelPath = cntkModelPath;
-    this.cntkPath = cntkPath || DEFAULT_CNTK_INSTALL_PATH;
+    if (!fs.existsSync(opts.cntkModelPath)) {
+        throw new Error('Given model file does not exist!')
+    }
 
-    evalClient = new EvalClient(cntkModelPath, this.cntkPath);
+    this.cntkModelPath = opts.cntkModelPath;
+    this.cntkPath = opts.cntkPath || DEFAULT_CNTK_INSTALL_PATH;
+
+    evalClient = new EvalClient(this.cntkModelPath, this.cntkPath, this.verbose);
 
     this.evaluateDirectory = function evaluateDirectory(directoryPath, cb) {
         if (!directoryPath) {
