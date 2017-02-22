@@ -16,9 +16,10 @@ npm install cntk-fastrcnn
 First, load the module and create an instance of a CNTKFRCNNModel object.
 
 The constructor accepts an options object with the following fields:
- - cntkModelPath : Path to the CNTK Fast-RCNN model file
- - cntkPath : The directory in which CNTK is installed. Default value: 'C:\local'
- - verbose : if set - the module will write verbose output when running evaluation. Default: false
+ - cntkModelPath : Path to the CNTK Fast-RCNN model file.
+ - cntkPath : The directory in which CNTK is installed. Default value: 'C:\local\cntk'.
+ - cntkEnv : The CNTK env to use (e.g. 'cntk-py34', or 'cntk-py35'). If not specified, the latest available version is used.
+ - verbose : if set - the module will write verbose output when running evaluation. Default: false.
  
 
 For example:

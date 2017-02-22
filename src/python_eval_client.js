@@ -15,11 +15,18 @@ function getLastSortedDirectory(prefix, path) {
     return filteredEntries[filteredEntries.length - 1];
 }
 
-function resolveCntkEnvDir(cntkInstallDir) {
+function resolveCntkEnvDir(cntkInstallDir, cntkEnv) {
     var anacondaPath = getLastSortedDirectory('anaconda3-', cntkInstallDir);
     var envsPath = path.join(cntkInstallDir, anacondaPath, 'envs');
-    var cntkEnvDir = getLastSortedDirectory('cntk-py', envsPath);
-    return path.join(envsPath, cntkEnvDir);
+    if (!cntkEnv) {
+        cntkEnv = getLastSortedDirectory('cntk-py', envsPath);
+    }
+    else {
+        if (!fs.existsSync(path.join(envsPath, cntkEnv))) {
+            throw new Error(util.format('Given cntk env: %s does not exist', cntkEnv))
+        }
+    }
+    return path.join(envsPath, cntkEnv);
 }
 
 function getAndEnsureJsonTempDir() {
@@ -98,11 +105,11 @@ function evalDirectoryImp(directoryPath, cntkModelPath, cntkEnvDirPath, jsonTemp
     });
 }
 
-function EvalClient(cntkModelPath, cntkInstallDir, verbose) {
+function EvalClient(cntkModelPath, cntkInstallDir, cntkEnv, verbose) {
     this.cntkInstallDir = cntkInstallDir;
     this.cntkModelPath = cntkModelPath;
     this.verbose = !!verbose;
-    this.cntkEnvDirPath = resolveCntkEnvDir(cntkInstallDir);
+    this.cntkEnvDirPath = resolveCntkEnvDir(path.dirname(cntkInstallDir), cntkEnv);
     // add to path..
     process.env.PATH = this.cntkEnvDirPath + ';' + process.env.PATH;
     this.jsonTempDir = getAndEnsureJsonTempDir();

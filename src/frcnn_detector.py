@@ -324,7 +324,7 @@ if __name__ == "__main__":
                         required=True)
 
     parser.add_argument('--cntk-path', type=str, metavar='<dir path>',
-                        help='Path to the diretory in which CNTK is installed, e.g. c:\\local',
+                        help='Path to the diretory in which CNTK is installed, e.g. c:\\local\\cntk',
                         required=False)
 
     parser.add_argument('--json-output', type=str, metavar='<file path>',
@@ -340,8 +340,8 @@ if __name__ == "__main__":
     if args.cntk_path:
         cntk_path = args.cntk_path
     else:
-        cntk_path = "C:\\local"
-    cntk_scripts_path = path.join(cntk_path, r"cntk/Examples/Image/Detection/FastRCNN")
+        cntk_path = "C:\\local\\cntk"
+    cntk_scripts_path = path.join(cntk_path, r"Examples/Image/Detection/FastRCNN")
 
     if (output_path is None and json_output_path is None):
         parser.error("No directory output path or json output path specified")
