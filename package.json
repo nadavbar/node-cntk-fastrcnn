@@ -1,6 +1,6 @@
 {
   "name": "cntk-fastrcnn",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "node.js API for CNTK Fast-RCNN model",
   "main": "main.js",
   "scripts": {

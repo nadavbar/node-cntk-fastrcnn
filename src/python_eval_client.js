@@ -8,12 +8,18 @@ const exec = require('child_process').exec;
 const CNTK_CMD_TEMPLATE = "%s " + path.join(__dirname, 'frcnn_detector.py') + 
                           ' --input %s --json-output %s --model %s --cntk-path %s'
 
+function getLastSortedDirectory(prefix, path) {
+    var entries = fs.readdirSync(path)
+    var filteredEntries = entries.filter((value) => {return value.toLowerCase().startsWith(prefix)});
+    filteredEntries.sort();
+    return filteredEntries[filteredEntries.length - 1];
+}
+
 function resolveCntkEnvDir(cntkInstallDir) {
-    entries = fs.readdirSync(cntkInstallDir)
-    anacondaEntries = entries.filter((value) => {return value.toLowerCase().startsWith('anaconda3-')});
-    anacondaEntries.sort();
-    anacondaPath = anacondaEntries[anacondaEntries.length - 1];
-    return path.join(cntkInstallDir, anacondaPath, 'envs/cntk-py34');
+    var anacondaPath = getLastSortedDirectory('anaconda3-', cntkInstallDir);
+    var envsPath = path.join(cntkInstallDir, anacondaPath, 'envs');
+    var cntkEnvDir = getLastSortedDirectory('cntk-py', envsPath);
+    return path.join(envsPath, cntkEnvDir);
 }
 
 function getAndEnsureJsonTempDir() {
@@ -45,9 +51,9 @@ function runCNTK(cntk_cmd, cb) {
     });
 
     proc.on('exit', (exitCode)=> {
-        err = null;
+        var err = null;
         if (exitCode != 0) {
-            errorMesage = util.format("CNTK Process failed with error code %d\nError output:%s",exitCode, error_data);
+            var errorMesage = util.format("CNTK Process failed with error code %d\nError output:%s",exitCode, error_data);
             err = Error(errorMesage)
         }
         cb(err, output_data);
