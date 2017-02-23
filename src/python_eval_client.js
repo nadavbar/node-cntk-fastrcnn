@@ -111,7 +111,11 @@ function EvalClient(cntkModelPath, cntkInstallDir, cntkEnv, verbose) {
     this.verbose = !!verbose;
     this.cntkEnvDirPath = resolveCntkEnvDir(path.dirname(cntkInstallDir), cntkEnv);
     // add to path..
-    process.env.PATH = this.cntkEnvDirPath + ';' + process.env.PATH;
+    var ENV_PATH_DELIMITER = ';';
+    if (process.platform != 'win32') {
+        ENV_PATH_DELIMITER = ':';
+    }
+    process.env.PATH = this.cntkEnvDirPath + ENV_PATH_DELIMITER + process.env.PATH;
     this.jsonTempDir = getAndEnsureJsonTempDir();
 
     this.evalDirectory = function(directoryPath, cb) {
