@@ -93,7 +93,7 @@ Here is an example of the result object of a directory that contains 2 images (n
 Since CNTK does not embed the names of the classes in the model, on default, the module returns non descriptive names for the classes, e.g. "class_1", "class_2".
 
 If you want the module to return more descriptive names, you can place a JSON file named "model.json" in the same directory of the Fast-RCNN model file.
-You can then place the desriptions of the classes in the JSON file under the "classes" key.
+You can then place the descriptions of the classes in the JSON file under the "classes" key.
 
 For example, the following JSON will describe the classes for the above example:
 
