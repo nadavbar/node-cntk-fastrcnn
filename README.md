@@ -4,12 +4,24 @@ A node wrapper a CNTK Fast-RCNN model
 Note: The model works with CNTK v2 Models. 
 For more info about the CNTK Fast-RCNN implementation, take a look at [this tutorial](https://github.com/Microsoft/CNTK/wiki/Object-Detection-using-Fast-R-CNN) and [this notebook](https://github.com/nadavbar/cntk-fastrcnn/blob/master/frcnn_eval.ipynb).
 
+The module uses the FRCNNDetector implementation from <a href="https://github.com/CatalystCode/CNTK-FastRCNNDetector">here</a>.
+
+
 ### Installation
 Install by running:
 
 ```
 npm install cntk-fastrcnn
 ```
+
+## Python Preliminaries
+
+Since the FRCNN detector uses bits of the CNTK Fast-RCNN implementation it has the same requirements as the CNTK
+Fast-RCNN training pipeline. 
+
+Before running the code in this repository, please make sure to install the required python packages as described
+in <a href="https://github.com/Microsoft/CNTK/wiki/Object-Detection-using-Fast-R-CNN#setup">the Fast-RCNN CNTK tutorial</a>.  
+
 
 ###How to use
 
