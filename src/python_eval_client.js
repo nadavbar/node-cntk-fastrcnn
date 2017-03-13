@@ -18,13 +18,13 @@ function getCntkEnvForPlatform(cntkInstallDir) {
     if (process.platform == 'win32') {
         var envScripts = fs.readdirSync(path.join(cntkInstallDir, 'Scripts')).filter((value) => {return value.toLowerCase().startsWith('cntkpy')});
         var envScriptName = envScripts.sort()[envScripts.length - 1];
-        var re = /(py[0-9][0-9])/;
+        var re = /(py[0-9]+)/;
         res = re.exec(envScriptName);
         return 'cntk-' + res[1];
     }
     else {
         var envActivateScript = fs.readFileSync(path.join(cntkInstallDir, 'activate-cntk'));
-        var re = /envs\/(cntk-py[0-9][0-9])/;
+        var re = /envs\/(cntk-py[0-9]+)/;
         res = re.exec(envActivateScript);
         return res[1];
     }
