@@ -16,10 +16,11 @@ function getLastSortedDirectory(prefix, path) {
 
 function getCntkEnvForPlatform(cntkInstallDir) {
     if (process.platform == 'win32') {
-        var envActivateScript = fs.readFileSync(path.join(cntkInstallDir, 'Scripts\'));
-        var re = /envs\/(cntk-py[0-9][0-9])/;
-        res = re.exec(envActivateScript);
-        return res[1]
+        var envScripts = fs.readdirSync(path.join(cntkInstallDir, 'Scripts')).filter((value) => {return value.toLowerCase().startsWith('cntkpy')});
+        var envScriptName = envScripts.sort()[envScripts.length - 1];
+        var re = /(py[0-9][0-9])/;
+        res = re.exec(envScriptName);
+        return 'cntk-' + res[1];
     }
     else {
         var envActivateScript = fs.readFileSync(path.join(cntkInstallDir, 'activate-cntk'));
@@ -43,7 +44,6 @@ function resolveCntkEnvDir(anacondaInstallDir, cntkInstallDir, cntkEnv) {
             throw new Error(util.format('Given cntk env: %s does not exist', cntkEnv))
         }
     }
-    console.info(path.join(envsPath, cntkEnv));
     return path.join(envsPath, cntkEnv);
 }
 
