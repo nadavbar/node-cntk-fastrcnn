@@ -4,7 +4,6 @@ const os = require('os');
 const util = require('util');
 const tmp = require('tmp');
 const exec = require('child_process').exec;
-
 const CNTK_CMD_TEMPLATE = "%s " + path.join(__dirname, 'frcnn_detector.py') + 
                           ' --input %s --json-output %s --model %s --cntk-path %s'
 
@@ -15,11 +14,30 @@ function getLastSortedDirectory(prefix, path) {
     return filteredEntries[filteredEntries.length - 1];
 }
 
-function resolveCntkEnvDir(cntkInstallDir, cntkEnv) {
-    var anacondaPath = getLastSortedDirectory('anaconda3-', cntkInstallDir);
-    var envsPath = path.join(cntkInstallDir, anacondaPath, 'envs');
+function getCntkEnvForPlatform(cntkInstallDir) {
+    if (process.platform == 'win32') {
+        var envScripts = fs.readdirSync(path.join(cntkInstallDir, 'Scripts')).filter((value) => {return value.toLowerCase().startsWith('cntkpy')});
+        var envScriptName = envScripts.sort()[envScripts.length - 1];
+        var re = /(py[0-9][0-9])/;
+        res = re.exec(envScriptName);
+        return 'cntk-' + res[1];
+    }
+    else {
+        var envActivateScript = fs.readFileSync(path.join(cntkInstallDir, 'activate-cntk'));
+        var re = /envs\/(cntk-py[0-9][0-9])/;
+        res = re.exec(envActivateScript);
+        return res[1];
+    }
+}
+
+function resolveCntkEnvDir(anacondaInstallDir, cntkInstallDir, cntkEnv) {
+    var anacondaPath = getLastSortedDirectory('anaconda3', anacondaInstallDir);
+    var envsPath = path.join(anacondaInstallDir, anacondaPath, 'envs');
     if (!cntkEnv) {
-        cntkEnv = getLastSortedDirectory('cntk-py', envsPath);
+        cntkEnv = getCntkEnvForPlatform(cntkInstallDir);
+        if (process.platform != 'win32') {
+            cntkEnv = path.join(cntkEnv, 'bin')
+        }
     }
     else {
         if (!fs.existsSync(path.join(envsPath, cntkEnv))) {
@@ -109,13 +127,26 @@ function EvalClient(cntkModelPath, cntkInstallDir, cntkEnv, verbose) {
     this.cntkInstallDir = cntkInstallDir;
     this.cntkModelPath = cntkModelPath;
     this.verbose = !!verbose;
-    this.cntkEnvDirPath = resolveCntkEnvDir(path.dirname(cntkInstallDir), cntkEnv);
-    // add to path..
-    var ENV_PATH_DELIMITER = ';';
-    if (process.platform != 'win32') {
-        ENV_PATH_DELIMITER = ':';
+
+    var isWindows = process.platform == 'win32';
+    var anacondaInstallDir = null;
+    if (isWindows) {
+        anacondaInstallDir = path.dirname(cntkInstallDir);
     }
-    process.env.PATH = this.cntkEnvDirPath + ENV_PATH_DELIMITER + process.env.PATH;
+    else {
+        anacondaInstallDir = process.env['HOME'].toString();
+    }
+
+    this.cntkEnvDirPath = resolveCntkEnvDir(anacondaInstallDir, cntkInstallDir, cntkEnv);
+    // add to path..
+    if (isWindows) {
+        process.env.PATH = this.cntkEnvDirPath + ';' + process.env.PATH;
+    }
+    else {
+        process.env.PATH = cntkInstallDir + '/cntk/bin:' + process.env.PATH;
+        process.env.LD_LIBRARY_PATH= cntkInstallDir + '/cntk/lib:' + cntkInstallDir + '/cntk/dependencies/lib:' + process.env.LD_LIBRARY_PATH;
+    }
+    
     this.jsonTempDir = getAndEnsureJsonTempDir();
 
     this.evalDirectory = function(directoryPath, cb) {

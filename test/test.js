@@ -1,9 +1,9 @@
 const path = require('path');
 const m = require('../');
 
-//onst imagesDir = path.join(__dirname, 'test_imgs');
-const modelFileLocation = 'C:\\cntk_model\\Fast-RCNN.model';
-const imagesDir = 'C:\\cntk_input\\testImages';
+
+const modelFileLocation = path.join(__dirname, 'Fast-RCNN.model');
+const imagesDir = path.join(__dirname, 'testImages');
 
 model = new m.CNTKFRCNNModel({cntkModelPath : modelFileLocation,
     verbose : true});

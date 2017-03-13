@@ -1,6 +1,14 @@
 const fs = require('fs');
+const path = require('path')
 const EvalClient = require('./python_eval_client').EvalClient;
-const DEFAULT_CNTK_INSTALL_PATH = 'c:\\local\\cntk';
+var DEFAULT_CNTK_INSTALL_PATH = null;
+
+if (process.platform == 'win32') {
+    DEFAULT_CNTK_INSTALL_PATH = 'c:\\local\\cntk';
+}
+else {
+    DEFAULT_CNTK_INSTALL_PATH = path.join(process.env.HOME,'cntk');
+}
 
 /*
 opts:
