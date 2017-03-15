@@ -1,14 +1,18 @@
-import sys
 import cv2
+import json
+import sys
 import numpy as np
 from os import path
+
+# CNTK imports
 from cntk import load_model
-from time import time
-import json
+from cntk.layers import Placeholder
+from cntk.graph import find_by_name, get_node_outputs
+from cntk.ops import combine, input_variable
+from cntk.ops.functions import CloneMethod
 
 # constants used for ROI generation:
 # ROI generation
-# TODO: Read those values from PARAMETERS.py?
 roi_minDimRel = 0.04
 roi_maxDimRel = 0.4
 roi_minNrPixelsRel = 2 * roi_minDimRel * roi_minDimRel
@@ -20,9 +24,6 @@ ss_sigma = 1.2  # selective search ROIs: width of gaussian kernal for segmentati
 ss_minSize = 20  # selective search ROIs: minimum component size for segmentation
 grid_nrScales = 7  # uniform grid ROIs: number of iterations from largest possible ROI to smaller ROIs
 grid_aspectRatios = [1.0, 2.0, 0.5]  # uniform grid ROIs: aspect ratio of ROIs
-#cntk_nrRois = 2000  # 2000 # how many ROIs to zero-pad
-#cntk_padWidth = 1000
-#cntk_padHeight = 1000
 roi_minDim = roi_minDimRel * roi_maxImgDim
 roi_maxDim = roi_maxDimRel * roi_maxImgDim
 roi_minNrPixels = roi_minNrPixelsRel * roi_maxImgDim * roi_maxImgDim
@@ -44,19 +45,7 @@ def get_classes_description(model_file_path, classes_count):
         file_content = handle.read()
         model_desc = json.loads(file_content)
     return model_desc["classes"]
-   
 
-class StopWatch:
-    def __init__(self, silent=False):
-        self.__silent = silent
-        self.time = time()
-
-    def t(self, message):
-        if self.__silent:
-            return
-
-        print("watch: %s: %0.4f" % (message, time() - self.time))
-        self.time = time()
 
 class FRCNNDetector:
 
@@ -73,14 +62,12 @@ class FRCNNDetector:
         self.__model = None
         self.__model_warm = False
         self.__grid_rois_cache = {}
-        self.rois_predictions_labels = None
+
         self.labels_count = 0
 
         # a cache to use ROIs after filter in case we only use the grid method
         self.__rois_only_grid_cache = {}
 
-        # A really horrible hack we do for now in order to take the scripts from the CNTK exampels dir..
-        # Ideally we should just take the entire dir
         sys.path.append(self.__cntk_scripts_path)
         global imArrayWidthHeight, getSelectiveSearchRois, imresizeMaxDim
         from cntk_helpers import imArrayWidthHeight, getSelectiveSearchRois, imresizeMaxDim
@@ -107,8 +94,7 @@ class FRCNNDetector:
         # prepare the arguments
         arguments = {
             self.__model.arguments[self.__args_indices["features"]]: [dummy_image],
-            self.__model.arguments[self.__args_indices["rois"]]: [dummy_rois],
-            self.__model.arguments[self.__args_indices["roiLabels"]]: [dummy_labels]
+            self.__model.arguments[self.__args_indices["rois"]]: [dummy_rois]
         }
         self.__model.eval(arguments)
 
@@ -118,29 +104,48 @@ class FRCNNDetector:
     def load_model(self):
         if self.__model:
             raise Exception("Model already loaded")
-        self.__model = load_model(self.__model_path)
+        
+        trained_frcnn_model = load_model(self.__model_path)
+
+        # cache indices of the model arguments
+        args_indices = {}
+        for i,arg in enumerate(trained_frcnn_model.arguments):
+            args_indices[arg.name] = i
+
+        self.__nr_rois = trained_frcnn_model.arguments[args_indices["rois"]].shape[0]
+        self.__resize_width = trained_frcnn_model.arguments[args_indices["features"]].shape[1]
+        self.__resize_height = trained_frcnn_model.arguments[args_indices["features"]].shape[2]
+        self.labels_count = trained_frcnn_model.arguments[args_indices["roiLabels"]].shape[1]
+
+        # next, we adjust the clone the model and create input nodes just for the features (image) and ROIs
+        # This will make sure that only the calculations that are needed for evaluating images are performed
+        # during test time
+        #  
+        # find the original features and rois input nodes
+        features_node = find_by_name(trained_frcnn_model, "features")
+        rois_node = find_by_name(trained_frcnn_model, "rois")
+
+        #  find the output "z" node
+        z_node = find_by_name(trained_frcnn_model, 'z')
+
+        # define new input nodes for the features (image) and rois
+        image_input = input_variable(features_node.shape, name='features')
+        roi_input = input_variable(rois_node.shape, name='rois')
+
+        # Clone the desired layers with fixed weights and place holder for the new input nodes
+        cloned_nodes = combine([z_node.owner]).clone(
+            CloneMethod.freeze,
+            {features_node: Placeholder(name='features'), rois_node: Placeholder(name='rois')})
+
+        # apply the cloned nodes to the input nodes to obtain the model for evaluation
+        self.__model = cloned_nodes(image_input, roi_input)
+
+        # cache the indices of the input nodes
         self.__args_indices = {}
-        self.__output_indices = {}
-        # get arugments indices:
-        # arguments names:
-        #rois
-        #features
-        #roiLabels
 
-        #outputs names:
-        #ce_output
-        #errs_output
-        #z_output
-
-        for arg, i in zip(self.__model.arguments, range(len(self.__model.arguments))):
+        for i,arg in enumerate(self.__model.arguments):
             self.__args_indices[arg.name] = i
-        for out, i in zip(self.__model.outputs, range(len(self.__model.outputs))):
-            self.__output_indices[out.name] = i 
 
-        self.__nr_rois = self.__model.arguments[self.__args_indices["rois"]].shape[0]
-        self.__resize_width = self.__model.arguments[self.__args_indices["features"]].shape[1]
-        self.__resize_height = self.__model.arguments[self.__args_indices["features"]].shape[2]
-        self.labels_count = self.__model.arguments[self.__args_indices["roiLabels"]].shape[1]
 
     def resize_and_pad(self, img):
         self.ensure_model_is_loaded()
@@ -243,21 +248,12 @@ class FRCNNDetector:
 
     def detect(self, img):
 
-        watch = StopWatch(silent=True)
         self.ensure_model_is_loaded()
-        watch.t("Loaded model")
-
         self.warm_up()
-
-        watch.t("Warmed up model")
 
         resized_img, img_model_arg = self.resize_and_pad(img)
 
-        watch.t("Resized image")
-
         test_rois, original_rois = self.get_rois_for_image(img)
-
-        watch.t("Generated ROIs")
 
         roi_padding_index = len(original_rois)
 
@@ -267,23 +263,15 @@ class FRCNNDetector:
         # prepare the arguments
         arguments = {
             self.__model.arguments[self.__args_indices["features"]]: [img_model_arg],
-            self.__model.arguments[self.__args_indices["rois"]]: [test_rois],
-            self.__model.arguments[self.__args_indices["roiLabels"]]: [dummy_labels]
+            self.__model.arguments[self.__args_indices["rois"]]: [test_rois]
         }
 
         # run it through the model
         output = self.__model.eval(arguments)
-        watch.t("Evaluated through network")
         self.__model_warm  = True
         
-        
-        # some CNTK version call the output layer "z_output" and some "z", not sure why its not embdded in the model
-        output_param_name = "z_output"
-        if (not output_param_name in self.__output_indices):
-            output_param_name = "z"
-        
         # take just the relevant part and cast to float64 to prevent overflow when doing softmax
-        rois_values = output[self.__model.outputs[self.__output_indices[output_param_name]]][0][0][:roi_padding_index].astype(np.float64)
+        rois_values = output[0][0][:roi_padding_index].astype(np.float64)
 
         # get the prediction for each roi by taking the index with the maximal value in each row
         rois_labels_predictions = np.argmax(rois_values, axis=1)
@@ -291,40 +279,39 @@ class FRCNNDetector:
         # calculate the probabilities using softmax
         rois_probs = softmax2D(rois_values)
 
-        # TODO: Should we perform non maxima supression here? There's also another implementation that we use
-        # in the calling code..
         non_padded_rois = test_rois[:roi_padding_index]
         max_probs = np.amax(rois_probs, axis=1).tolist()
 
-        watch.t("Calculated probs")
-
         rois_prediction_indices = applyNonMaximaSuppression(nms_threshold, rois_labels_predictions, max_probs,
                                                             non_padded_rois)
-        watch.t("non-maxima supression")
 
-        #original_rois_predictions = original_rois[np.array(rois_labels_predictions[rois_prediction_indices]  == 1)]
         original_rois_predictions = original_rois[rois_prediction_indices]
 
         rois_predictions_labels = rois_labels_predictions[rois_prediction_indices]
-        non_noise_indices = rois_predictions_labels > 0
-        self.rois_predictions_labels = rois_predictions_labels[non_noise_indices]
-        self.__rois_predictions = original_rois_predictions[non_noise_indices]
-        return self.__rois_predictions
+        # filter out backgrond label
+        non_background_indices = rois_predictions_labels > 0
+        rois_predictions_labels = rois_predictions_labels[non_background_indices]
+        rois_predictions = original_rois_predictions[non_background_indices]
+        return rois_predictions, rois_predictions_labels
+
 
 if __name__ == "__main__":
     import argparse
     import os
     parser = argparse.ArgumentParser(description='FRCNN Detector')
+    
     parser.add_argument('--input', type=str, metavar='<path>',
                         help='Path to image file or to a directory containing image in jpg format', required=True)
+    
     parser.add_argument('--output', type=str, metavar='<directory path>',
                         help='Path to output directory', required=False)
+    
     parser.add_argument('--model', type=str, metavar='<file path>',
                         help='Path to model file',
                         required=True)
 
     parser.add_argument('--cntk-path', type=str, metavar='<dir path>',
-                        help='Path to the diretory in which CNTK is installed, e.g. c:\\local\\cntk',
+                        help='Path to the directory in which CNTK is installed, e.g. c:\\local\\cntk',
                         required=False)
 
     parser.add_argument('--json-output', type=str, metavar='<file path>',
@@ -359,7 +346,7 @@ if __name__ == "__main__":
                             cntk_scripts_path=cntk_scripts_path)
     detector.load_model()
 
-    if (json_output_path is not None):
+    if json_output_path is not None:
         model_classes = get_classes_description(model_file_path, detector.labels_count)
         json_output_obj = {"classes": model_classes,
                            "frames" : {}}
@@ -370,31 +357,28 @@ if __name__ == "__main__":
 
     for file_path, counter in zip(file_paths, range(len(file_paths))):
         img = cv2.imread(file_path)
-        rects = detector.detect(img)
+        rects, labels = detector.detect(img)
 
         print("Processed image %d"%(counter+1))
 
-        if (output_path is not None):
+        if output_path is not None:
             img_cpy = img.copy()
 
             print("Running FRCNN detection on", file_path)
+            print("%d regions were detected"%len(rects))
 
-            if players_label == -1:
-                players_label = detector.labels_count - 1
-
-            print("%d regions were detected"%(len(rects)))
-            for rect, label in zip(rects, detector.rois_predictions_labels):
+            for rect, label in zip(rects, labels):
                 x1, y1, x2, y2 = rect
-                #if label == players_label:
-                cv2.rectangle(img_cpy, (x1, y1), (x2, y2), (0,255,0), 2)
+
+                cv2.rectangle(img_cpy, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
             output_file_path = os.path.join(output_path, os.path.basename(file_path))
             cv2.imwrite(output_file_path, img_cpy)
-        elif (json_output_path is not None):
+        elif json_output_path is not None:
             image_base_name = path.basename(file_path)
             regions_list = []
             json_output_obj["frames"][image_base_name] = {"regions": regions_list}
-            for rect, label in zip(rects, detector.rois_predictions_labels):
+            for rect, label in zip(rects, labels):
                 regions_list.append({
                     "x1" : int(rect[0]),
                     "y1" : int(rect[1]),
@@ -403,7 +387,7 @@ if __name__ == "__main__":
                     "class" : int(label)
                 })
 
-    if (json_output_path is not None):
+    if json_output_path is not None:
         with open(json_output_path, "wt") as handle:
             json_dump = json.dumps(json_output_obj, indent=2)
             handle.write(json_dump)
