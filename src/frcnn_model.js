@@ -31,9 +31,19 @@ function CNTKFRCNNModel(opts) {
     this.cntkModelPath = opts.cntkModelPath;
     this.cntkPath = opts.cntkPath || DEFAULT_CNTK_INSTALL_PATH;
     this.cntkEnv = opts.cntkEnv;
+
+    var isWindows = process.platform == 'win32';
+    if (isWindows) {
+        this.anacondaPath = opts.anacondaPath || this.cntkPath;
+    }
+    else {
+        this.anacondaPath = opts.anacondaPath || process.env['HOME'].toString();
+    }
+
+    
     this.verbose = opts.verbose;
 
-    evalClient = new EvalClient(this.cntkModelPath, this.cntkPath, this.cntkEnv, this.verbose);
+    evalClient = new EvalClient(this.cntkModelPath, this.cntkPath, this.anacondaPath ,this.cntkEnv, this.verbose);
 
     this.evaluateDirectory = function evaluateDirectory(directoryPath, cb) {
         if (!directoryPath) {
