@@ -123,10 +123,20 @@ function evalDirectoryImp(directoryPath, cntkModelPath, cntkEnvDirPath, jsonTemp
     });
 }
 
-function EvalClient(cntkModelPath, cntkInstallDir, anacondaInstallDir, cntkEnv, verbose) {
+function EvalClient(cntkModelPath, cntkInstallDir, cntkEnv, anacondaInstallDir, verbose) {
     this.cntkInstallDir = cntkInstallDir;
     this.cntkModelPath = cntkModelPath;
     this.verbose = !!verbose;
+
+    if (anacondaInstallDir){
+        var isWindows = process.platform == 'win32';
+        if (isWindows) {
+            anacondaInstallDir = path.dirname(cntkInstallDir);
+        }
+        else {
+            anacondaInstallDir = process.env['HOME'].toString();
+        }
+    }
 
     this.cntkEnvDirPath = resolveCntkEnvDir(anacondaInstallDir, cntkInstallDir, cntkEnv);
     // add to path..
