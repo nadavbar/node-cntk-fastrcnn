@@ -409,3 +409,4 @@ if __name__ == "__main__":
         with open(json_output_path, "wt") as handle:
             json_dump = json.dumps(json_output_obj, indent=2)
             handle.write(json_dump)
+            
