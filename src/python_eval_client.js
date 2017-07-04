@@ -128,7 +128,7 @@ function EvalClient(cntkModelPath, cntkInstallDir, cntkEnv, anacondaInstallDir, 
     this.cntkModelPath = cntkModelPath;
     this.verbose = !!verbose;
 
-    if (anacondaInstallDir){
+    if (!anacondaInstallDir){
         var isWindows = process.platform == 'win32';
         if (isWindows) {
             anacondaInstallDir = path.dirname(cntkInstallDir);
