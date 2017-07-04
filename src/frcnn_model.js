@@ -16,6 +16,7 @@ opts:
     cntkModelPath : Path to the CNTK Fast-RCNN model file
     cntkPath : The directory in which CNTK is installed. Default value: 'C:\local\cntk'
     cntkEnv : The CNTK env to use (e.g. 'cntk-py34', or 'cntk-py35'). If not specified, the latest available version is used
+    anacondaPath: Path where anaconda is installed
     verbose : if set - the module will write verbose output when running evaluation. Default: false
 }
 */
@@ -31,9 +32,10 @@ function CNTKFRCNNModel(opts) {
     this.cntkModelPath = opts.cntkModelPath;
     this.cntkPath = opts.cntkPath || DEFAULT_CNTK_INSTALL_PATH;
     this.cntkEnv = opts.cntkEnv;
+    this.anacondaPath = opts.anacondaPath;
     this.verbose = opts.verbose;
 
-    evalClient = new EvalClient(this.cntkModelPath, this.cntkPath, this.cntkEnv, this.verbose);
+    evalClient = new EvalClient(this.cntkModelPath, this.cntkPath, this.cntkEnv, this.anacondaPath, this.verbose);
 
     this.evaluateDirectory = function evaluateDirectory(directoryPath, cb) {
         if (!directoryPath) {
